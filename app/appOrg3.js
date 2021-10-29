@@ -163,6 +163,9 @@ function sleep(ms) {
 /*======================================================================================= */
 async function main() {
 	try {
+        let result;
+        let statefulTxn;
+        let tmapData;
         /** ******* Fabric client init: Using Org1 identity to Org1 Peer ********** */
         const gatewayOrg1 = await initContractFromOrg1Identity(org1UserId);
         const networkOrg1 = await gatewayOrg1.getNetwork(channelName);
@@ -189,32 +192,30 @@ async function main() {
             //let assetID = `asset${6}`;
             let transaction;
 			console.log('------------------------Here Farmer Controls the App ------------------------\n');
-
-
-
 			console.log("******************Public Details of Asset Created ***********************\n")
             console.log('Adding Assets to work with:\n--> Submit Transaction: Create Asset ' + assetID);
-            let statefulTxn = contractOrg1.createTransaction('CreateAsset');
+            statefulTxn = contractOrg1.createTransaction('CreateAsset');
             statefulTxn.setEndorsingOrganizations(mspOrg1);
-            let result = await statefulTxn.submit(assetID,'green',10);
+            result = await statefulTxn.submit(assetID,'green',10);
 			console.log(" Asset Was created. Public details should be present !");
-
-
+            await sleep(2000);
 
 
 			// console.log('\n--> This is going to return the details of ',assetID);
 			result = await contractOrg1.evaluateTransaction('ReadAsset', assetID);//should delete let
 			console.log(`*** Result: ${prettyJSONString(result.toString())}`);
+            await sleep(2000);
+
 
             console.log('\n--> This is going to return the details of as read from Org3 ',assetID);
 			result = await contractOrg3.evaluateTransaction('ReadAsset', assetID);
 			console.log(`*** Result: ${prettyJSONString(result.toString())}`);
-
+            await sleep(2000);
 
 			console.log("Now we are going to read all assets including from org1 ",assetID)
 			result = await contractOrg1.evaluateTransaction('GetAllAssets');
 			console.log(`*** Result: ${prettyJSONString(result.toString())}`);
-
+            await sleep(2000);
 
 			try {
 				// Agree to a sell by Org1
@@ -235,25 +236,30 @@ async function main() {
 			} catch (sellError) {
 				console.log(`${RED}*** Failed: AgreeToSell - ${sellError}${RESET}`);
 			}
-			
+			await sleep(2000);
+
+
             console.log('\n~~~~~~~~~~~~~~~~ As Org2 Client ~~~~~~~~~~~~~~~~');
-            let buyerDetails = { assetID: assetID, buyerMSP: mspOrg2 };
+             let buyerDetails = { assetID: assetID, buyerMSP: mspOrg2 };
             console.log('\n~~~~~~~~~~~~~~~ We need to request to buy asset ~~~~~~~~~~~~~~~~');
             //make request to buy it,might have to do this before org1 sets price
             transaction = contractOrg2.createTransaction('RequestToBuy');
             transaction.setEndorsingOrganizations(mspOrg2);
             transaction.submit(assetID);
+            console.log('\n~~~~~~~~~~~~~~~  request to buy asset was succesfuull~~~~~~~~~~~~~~~~');
+			await sleep(2000);
 
-			
             console.log('\n--> Evaluate Transaction: ReadAsset ' + assetID);
             result = await contractOrg2.evaluateTransaction('ReadAsset', assetID);
             console.log(`<-- result: ${prettyJSONString(result.toString())}`);
-            
-            console.log("==============REQUEST TO BUY==================")
-            // result = await contractOrg1.evaluateTransaction('ReadRequestToBuy', assetID);//
-            // console.log(`<-- result: ${prettyJSONString(result.toString())}`);
-			// console.log("Here we are going to AgreeToBuy")
+            await sleep(2000);
 
+            console.log("==============REQUEST TO BUY==================")
+            result = await contractOrg1.evaluateTransaction('ReadRequestToBuy', assetID);//
+            console.log(`<-- result: ${prettyJSONString(result.toString())}`);
+			await sleep(2000);
+
+            console.log("Here we are going to AgreeToBuy")
 			try {
 				// Agree to a buy by Org2
 				const asset_price = {
@@ -273,53 +279,48 @@ async function main() {
 			} catch (buyError) {
 				console.log(`${RED}*** Failed: AgreeToBuy - ${buyError}${RESET}`);
 			}
+            await sleep(2000);
 
             console.log('\n**************** As Org1 Client ****************');
             // All members can send txn ReadRequestToBuy, set by Org2 above
             console.log('\n--> Evaluate Transaction: ReadRequestToBuy ' + assetID);
-            
-
-
             result = await contractOrg1.evaluateTransaction('ReadRequestToBuy', assetID);//should change how AgreeToTransfer is implemented
             console.log(`<-- result: ${prettyJSONString(result.toString())}`);
+            await sleep(2000);
 
             // Transfer the asset to Org2 //
             // To transfer the asset, the owner needs to pass the MSP ID of new asset owner, and initiate the transfer
             console.log('\n--> Submit Transaction: TransferRequestedAsset ' + assetID);
-
             statefulTxn = contractOrg1.createTransaction('TransferRequestedAsset');
-            let tmapData = Buffer.from(JSON.stringify(buyerDetails));
+            tmapData = Buffer.from(JSON.stringify(buyerDetails));
             statefulTxn.setEndorsingOrganizations(mspOrg1);
             statefulTxn.setTransient({
                 asset_owner: tmapData
             });
             result = await statefulTxn.submit();
-            
+            await sleep(2000);
 
 
-			console.log('\n--> We are going to read asset after transfer to org2');
-			result = await contractOrg1.evaluateTransaction('ReadAsset', assetID);
-			console.log(`*** Result: ${prettyJSONString(result.toString())}`);
+			// console.log('\n--> We are going to read asset after transfer to org2');
+			// result = await contractOrg1.evaluateTransaction('ReadAsset', assetID);
+			// console.log(`*** Result: ${prettyJSONString(result.toString())}`);
 
 
 			console.log('\n~~~~~~~~~~~~~~~~ As Org2 Client ~~~~~~~~~~~~~~~~');
 			console.log('\n--> Evaluate Transaction: GetAssetHistory, get the history of ',assetID);
 			result = await contractOrg1.evaluateTransaction('GetAssetHistory', assetID);
 			console.log(`*** Result: ${prettyJSONString(result.toString())}`);
-
+            await sleep(2000);
 
             console.log('\n~~~~~~~~~~~~~~~ We have to delete previous buy request ~~~~~~~~~~~~~~~~');
             transaction = contractOrg2.createTransaction('DeleteBuyRequest');
             transaction.setEndorsingOrganizations(mspOrg2);
             transaction.submit(assetID);
-
+            await sleep(2000);
 
 
             //=====Process of transfer from Org2=>Org3
             console.log(`${GREEN}\n========Here the process for the tranfer of asset from reatailer to org3 client========================= ${RESET}`);
-           // await sleep(2000);
-
-
             console.log('\n~~~~~~~~~~~~~~~~ As Org3 Client ~~~~~~~~~~~~~~~~\n');
             buyerDetails = { assetID: assetID, buyerMSP: mspOrg3 };
             console.log('\n~~~~~~~~~~~~~~~ We need to request to buy asset ~~~~~~~~~~~~~~~~');
@@ -327,14 +328,21 @@ async function main() {
             transaction = contractOrg3.createTransaction('RequestToBuy');
             transaction.setEndorsingOrganizations(mspOrg3);
             transaction.submit(assetID);
+            await sleep(2000);
+            console.log('\n~~~~~~~~~~~~~~~ request to buy asset was succesfull~~~~~~~~~~~~~~~~');
 
+            await sleep(2000);
+            result = await contractOrg3.evaluateTransaction('ReadRequestToBuy', assetID);//should change how AgreeToTransfer is implemented
+            await sleep(2000);
+            console.log(`<-- result: ${prettyJSONString(result.toString())}`);
+            await sleep(2000);
 
-            // await sleep(2000);
+        
 			
             console.log('\n--> Evaluate Transaction: ReadAsset ' + assetID);
             result = await contractOrg3.evaluateTransaction('ReadAsset', assetID);
             console.log(`<-- result: ${prettyJSONString(result.toString())}`);
-
+            await sleep(2000);
             console.log("==============Agree To sell from Org2==================")
             try {
 				// Agree to a sell by Org2
@@ -355,7 +363,9 @@ async function main() {
 			} catch (sellError) {
 				console.log(`${RED}*** Failed: AgreeToSell - ${sellError}${RESET}`);
 			}
-            
+            await sleep(2000);
+
+
             console.log("==============Agree TO BUY==================")
 			console.log("Here we are going to AgreeToBuy")
 			try {
@@ -377,12 +387,17 @@ async function main() {
 			} catch (buyError) {
 				console.log(`${RED}*** Failed: AgreeToBuy - ${buyError}${RESET}`);
 			}
+            await sleep(2000);
+
+
             
             console.log('\n**************** As Org2Client ****************');
             // All members can send txn ReadRequestToBuy, set by Org2 above
             console.log('\n--> Evaluate Transaction: ReadRequestToBuy ' + assetID);
             result = await contractOrg2.evaluateTransaction('ReadRequestToBuy', assetID);//should change how AgreeToTransfer is implemented
             console.log(`<-- result: ${prettyJSONString(result.toString())}`);
+            await sleep(2000);
+
 
             // Transfer the asset to Org3 //
             // To transfer the asset, the owner needs to pass the MSP ID of new asset owner, and initiate the transfer
@@ -394,24 +409,19 @@ async function main() {
                 asset_owner: tmapData
             });
             result = await statefulTxn.submit();
-            
+            await sleep(2000);
 
 
 			console.log('\n--> We are going to read privateAssetAfter after transfer to org3');
-			result = await contractOrg1.evaluateTransaction('ReadAsset', assetID);
+			result = await contractOrg2.evaluateTransaction('ReadAsset', assetID);
 			console.log(`*** Result: ${prettyJSONString(result.toString())}`);
-
-			// // console.log('\n--> We are going to read Bid Price from buyers private collection');
-			// // //readBidPrice(assetID,mspOrg3,contractOrg3)
-			// console.log(`*** Result: ${prettyJSONString(result.toString())}`);
+            await sleep(2000);
 
 
 
-			console.log('\n~~~~~~~~~~~~~~~~ As Org3 Client ~~~~~~~~~~~~~~~~');
-
-			
+		    console.log('\n~~~~~~~~~~~~~~~~ As Org3 Client ~~~~~~~~~~~~~~~~');
 			console.log('\n--> Evaluate Transaction: GetAssetHistory, get the history of ',assetID);
-			result = await contractOrg3.evaluateTransaction('GetAssetHistory', assetID);
+			result = await contractOrg2.evaluateTransaction('GetAssetHistory', assetID);
 			console.log(`*** Result: ${prettyJSONString(result.toString())}`);
 
 
