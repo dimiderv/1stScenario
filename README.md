@@ -22,14 +22,10 @@ It is going to be consisted of:
 			* Implicit Collection for Org2
 			* Implicit Collection for Org3
 			* Buy requests will be saved on World State  
-			* Secure Transfer Asset ( with the State Based Endorsement) on the app (setEndorsingPeers(mspOrg1))
+			* Secure Transfer Asset ( with the State Based Endorsement) on the app (setEndorsingPeers(mspOrg))
 Will expand on next scenario
-			* Private Collection for both together (Org1, Org2) and (Org2,Org3) ( this will be implemented on 2nd scenario)
-These are going to be created after completing the first three bullets 
-
-	* A public ledger where everyone can read it. This can be achieved either by creating a shared collection
-	 or by storing everything in to the public data ledger (I'm going to try this implementetion).
-	 
+			* Private Collection for both  (Org1, Org2) and (Org2,Org3) ( this will be implemented on 2nd scenario)
+ 
 INITIALIZATION HAS TO FOLLOW THESE STEPS
 If you decide you dont need a main.go you should follow these steps
  * go mod init FolderWeAreAt
@@ -38,9 +34,11 @@ If you decide you dont need a main.go you should follow these steps
  
  
  * main.go should include as import "FolderWeAreAt/chaincode" so that it does the import correctly and avoids import cycles
+ 
+#This works correctly
 If you decide to have separate file for main.go and the chaincode folder you have to go on the 
 project folder ex phase3 where you have folder chaincode and file main.go 
-and enter command *go mod init phase3* . The main file has to look like this
+and enter command *go mod init WorkingDir* . The main file has to look like this
 
 		package main
 
@@ -48,7 +46,7 @@ and enter command *go mod init phase3* . The main file has to look like this
 			"log"
 
 			"github.com/hyperledger/fabric-contract-api-go/contractapi"
-			"phase3/chaincode"
+			"WorkingDir/chaincode"
 			)
 
 		func main() {
