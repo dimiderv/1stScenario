@@ -9,7 +9,7 @@ import (
   "time"
   "strings"
   "github.com/golang/protobuf/ptypes"
-  //"github.com/hyperledger/fabric-chaincode-go/pkg/statebased"
+
 
   
 )
@@ -23,22 +23,23 @@ type SmartContract struct {
 
 // Asset describes basic details of what makes up a simple asset
 type Asset struct {
-//   ObjectType 	 string      `json:"objectType"`
-  ID             string  	 `json:"ID"`
-  Color          string 	 `json:"color"`
-  Weight         int         `json:"weight"`
-  Owner          string      `json:"owner"`
-  Timestamp      time.Time 	 `json:"timestamp"`
-  Creator        string 	 `json:"creator"`
-  ExpirationDate time.Time   `json:"expirationDate"`
-  SensorData 	 string		 `json:"sensorData"`	
+	AssetType 	   string      	`json:"assetType"`
+	ID             string  	 	`json:"ID"`
+	Color          string 		`json:"color"`
+	Weight         int         	`json:"weight"`
+	Owner          string      	`json:"owner"`
+	OwnerOrg       string      	`json:ownerOrg`
+	Timestamp      time.Time 	`json:"timestamp"`
+	Creator        string 	 	`json:"creator"`
+	ExpirationDate time.Time   	`json:"expirationDate"`
+	SensorData 	   string		`json:"sensorData"`	
   
 }
 
 
 
 // CreateAsset issues a new asset to the world state with given details and adds price to shared collection.
-func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface, id string, color string, weight int) error {
+func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface, id string, color string, weight int,assetType string) error {
 //objectType strings,
 
 	//check if asset already exists
@@ -98,11 +99,12 @@ func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface,
 
 	// Make submitting client the owner
 	asset := Asset{
-		// ObjectType:		objectType,
+		AssetType:		assetType,
 		ID:    			id,
 		Color: 			color,
 		Weight:  		weight,
 		Owner: 			clientID,
+		OwnerOrg:		clientOrgID,
 		Timestamp:  	timestamp,
 		Creator: 		creatorDN,
 		ExpirationDate:	expirationDate,
@@ -132,6 +134,11 @@ func (s *SmartContract) UpdateAsset(ctx contractapi.TransactionContextInterface,
 		return err
 	}
 
+	clientOrgID, err := ctx.GetClientIdentity().GetMSPID()
+	if err != nil {
+		return  fmt.Errorf("failed getting client's orgID: %v", err)
+	}
+	
 	clientID, err := s.GetSubmittingClientIdentity(ctx)
 	if err != nil {
 		return err
@@ -141,6 +148,9 @@ func (s *SmartContract) UpdateAsset(ctx contractapi.TransactionContextInterface,
 		return fmt.Errorf("submitting client not authorized to update asset, does not own asset")
 	}
 
+	if clientOrgID != asset.OwnerOrg {
+		return fmt.Errorf("submitting client not authorized to update asset, not from the same Org")
+	}
 	asset.Color = newColor
 	asset.Weight = newWeight
 
@@ -167,6 +177,14 @@ func (s *SmartContract) UpdateSensorData(ctx contractapi.TransactionContextInter
 
 	if clientID != asset.Owner {
 		return fmt.Errorf("submitting client not authorized to update asset, does not own asset")
+	}
+
+	clientOrgID, err := ctx.GetClientIdentity().GetMSPID()
+	if err != nil {
+		return  fmt.Errorf("failed getting client's orgID: %v", err)
+	}
+	if clientOrgID != asset.OwnerOrg {
+		return fmt.Errorf("submitting client not authorized to update asset, not from the same Org")
 	}
 
 	asset.SensorData = newSensorData
@@ -198,6 +216,15 @@ func (s *SmartContract) DeleteAsset(ctx contractapi.TransactionContextInterface,
 		return fmt.Errorf("submitting client not authorized to update asset, does not own asset")
 	}
 
+	clientOrgID, err := ctx.GetClientIdentity().GetMSPID()
+	if err != nil {
+		return  fmt.Errorf("failed getting client's orgID: %v", err)
+	}
+
+	if clientOrgID != asset.OwnerOrg {
+		return fmt.Errorf("submitting client not authorized to update asset, not from the same Org")
+	
+	}
 	return ctx.GetStub().DelState(id)
 }
 
@@ -334,10 +361,10 @@ func _between(value string, a string, b string) string {
 func main() {
   assetChaincode, err := contractapi.NewChaincode(&SmartContract{})
   if err != nil {
-    log.Panicf("Error creating asset-transfer-basic chaincode: %v", err)
+    log.Panicf("Error : %v", err)
   }
 
   if err := assetChaincode.Start(); err != nil {
-    log.Panicf("Error starting asset-transfer-basic chaincode: %v", err)
+    log.Panicf("Error starting  chaincode: %v", err)
   }
 }

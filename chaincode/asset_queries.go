@@ -21,6 +21,7 @@ type HistoryQueryResult struct {
 
 // GetAssetHistory returns the chain of custody for an asset since issuance.
 //got it from asset-transfer-ledger-queries
+//this way keeps only the updated form of the asset, might have to change it
 func (s *SmartContract) GetAssetHistory(ctx contractapi.TransactionContextInterface, assetID string) ([]HistoryQueryResult, error) {
 	log.Printf("GetAssetHistory: ID %v", assetID)
 

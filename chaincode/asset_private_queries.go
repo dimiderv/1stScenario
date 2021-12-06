@@ -17,15 +17,6 @@ func (s *SmartContract) ReadRequestToBuy(ctx contractapi.TransactionContextInter
 		return nil, fmt.Errorf("failed to create composite key: %v", err)
 	}
 
-	// clientMSPID,err:=ctx.GetClientIdentity().GetMSPID()
-	// if err != nil {
-	// 	return nil,fmt.Errorf("failed getting the client's MSPID: %v", err)
-	// }
-
-	// temp:=assetCollection
-	// if clientMSPID =="Org2MSP"{
-	// 	temp=assetCollection23
-	// }
 
 	buyerIdentity, err := ctx.GetStub().GetState(requestToBuyKey) // Get the state from world state
 	if err != nil {

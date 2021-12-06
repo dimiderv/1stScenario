@@ -19,22 +19,17 @@ import (
 const (
 	typeAssetForSale     = "S"
 	typeAssetBid         = "B"
-	typeAssetSaleReceipt = "SR"
-	typeAssetBuyReceipt  = "BR"
 )
 
 const requestToBuyObject = "RequestToBuyObject"
 const assetCollection ="assetCollection"
+
+
 type AssetPrivateDetails struct {
 	ID             string `json:"assetID"`
 	// ObjectType	   string `json:"objectType"`
 	Price 		   int    `json:"price"`
 }
-
-// type receipt struct {
-// 	price     int
-// 	timestamp time.Time
-// }
 
 type RequestToBuyObject struct {
 	ID      string `json:"assetID"`
@@ -58,6 +53,15 @@ func (s *SmartContract) SetPrice(ctx contractapi.TransactionContextInterface, as
 	// Verify that this client  actually owns the asset.
 	if clientID != asset.Owner {
 		return fmt.Errorf("a client from %s cannot sell an asset owned by %s", clientID, asset.Owner)
+	}
+
+	clientOrgID, err := ctx.GetClientIdentity().GetMSPID()
+	if err != nil {
+		return  fmt.Errorf("failed getting client's orgID: %v", err)
+	}
+
+	if clientOrgID != asset.OwnerOrg {
+		return fmt.Errorf("submitting client not from the same Org.Clients org is %s and buyers is %s", clientOrgID, asset.OwnerOrg)
 	}
 
 	return SaveToCollection(ctx, assetID, typeAssetForSale)
@@ -181,7 +185,7 @@ func (s *SmartContract) TransferRequestedAsset(ctx contractapi.TransactionContex
 	}
 
 	// Verify transfer details and transfer owner
-	err = s.verifyAgreement(ctx, asset.ID, asset.Owner, assetTransferInput.BuyerMSP)
+	err = s.verifyAgreement(ctx, asset.ID, asset.Owner,asset.OwnerOrg, assetTransferInput.BuyerMSP)
 	if err != nil {
 		return fmt.Errorf("failed transfer verification: %v", err)
 	}
@@ -196,7 +200,7 @@ func (s *SmartContract) TransferRequestedAsset(ctx contractapi.TransactionContex
 
 	//change ownership
 	asset.Owner = buyRequest.BuyerID
-
+	asset.OwnerOrg = assetTransferInput.BuyerMSP
 	assetJSONasBytes, err := json.Marshal(asset)
 	if err != nil {
 		return fmt.Errorf("failed marshalling asset %v: %v", asset.ID, err)
@@ -280,7 +284,7 @@ func (s *SmartContract) DeleteBidRequest(ctx contractapi.TransactionContextInter
 // verifyAgreement is an internal helper function used by TransferAsset to verify
 // that the transfer is being initiated by the owner and that the buyer has agreed
 // to the same appraisal value as the owner
-func (s *SmartContract) verifyAgreement(ctx contractapi.TransactionContextInterface, assetID string, owner string, buyerMSP string) error {
+func (s *SmartContract) verifyAgreement(ctx contractapi.TransactionContextInterface, assetID string, owner string,ownerOrg string, buyerMSP string) error {
 
 	// Check 1: verify that the transfer is being initiatied by the owner
 
@@ -294,6 +298,15 @@ func (s *SmartContract) verifyAgreement(ctx contractapi.TransactionContextInterf
 		return fmt.Errorf("error: submitting client identity does not own asset")
 	}
 
+	//added this to avoid same name but different orgs
+	clientOrgID, err := ctx.GetClientIdentity().GetMSPID()
+	if err != nil {
+		return  fmt.Errorf("failed getting client's orgID: %v", err)
+	}
+
+	if clientOrgID != ownerOrg {
+		return fmt.Errorf("submitting client not from the same Org.Clients org is %s and buyers is %s",clientOrgID,ownerOrg)
+	}
 	// Check 2: verify that the buyer has agreed to the appraised value
 
 	// Get collection names
@@ -341,23 +354,6 @@ func (s *SmartContract) verifyAgreement(ctx contractapi.TransactionContextInterf
 
 
 
-
-//OLD HELPER FUNCTION
-
-// // getCollectionName is an internal helper function to get collection of submitting client identity.
-// func getCollectionName(ctx contractapi.TransactionContextInterface) (string, error) {
-
-// 	// Get the MSP ID of submitting client identity
-// 	clientMSPID, err := ctx.GetClientIdentity().GetMSPID()
-// 	if err != nil {
-// 		return "", fmt.Errorf("failed to get verified MSPID: %v", err)
-// 	}
-
-// 	// Create the collection name
-// 	orgCollection := clientMSPID + "PrivateCollection"
-
-// 	return orgCollection, nil
-// }
 
 // verifyClientOrgMatchesPeerOrg is an internal function used verify client org id and matches peer org id.
 func verifyClientOrgMatchesPeerOrg(ctx contractapi.TransactionContextInterface) error {
